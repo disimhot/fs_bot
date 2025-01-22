@@ -2,7 +2,7 @@ Telegram-бот, который помогает пользователю рас
 
 Бот @disimhot_bot
 
-В проекте использована библиотека [FatSecret](https://platform.fatsecret.com/docs/v3/foods.search) для поиска еды для получения точных данных ккал.
+В проекте использована библиотека [FatSecret](https://platform.fatsecret.com/docs/v3/foods.search) для получения точных данных по калориям.
 В расчете ккал уточняется пол пользователя.
 
 Деплой выполнен на render.com
