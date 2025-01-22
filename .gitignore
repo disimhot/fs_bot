@@ -5,6 +5,8 @@ __pycache__/
 *.iml
 *.xml
 *.py~
+*.txt~
+*.png
 
 # C extensions
 *.so

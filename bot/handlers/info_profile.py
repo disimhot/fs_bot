@@ -1,8 +1,11 @@
+import os
 from aiogram import Router, Bot
-from aiogram.types import Message, CallbackQuery
+from aiogram.types import Message, CallbackQuery, InputMediaPhoto, FSInputFile
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram import F
+import matplotlib.pyplot as plt
+from io import BytesIO
 
 from bot.helpers import BotCommands
 from bot.states import ProfileSave, WaterLog, FoodLog, WorkoutLog
@@ -10,7 +13,7 @@ from bot.storage import add_profile_params, get_profile_params_by_id, update_pro
 from bot.helpers import Person, Food
 from bot.helpers.menu import change_main_menu
 from bot.keyboards.trainings import get_training_kb
-from bot.helpers.training import count_training_waste
+
 from bot.helpers.training import *
 
 router: Router = Router()
@@ -190,3 +193,36 @@ async def log_training(message: Message) -> None:
         f"Потреблено: {rest_calorie_goal} ккал из {logged_calories[0]} ккал.\n- Сожжено: "
         f"{burned_calories} ккал.\n- Осталось: {calorie_goal} ккал"
     )
+
+
+@router.message(Command(BotCommands.GetGraph.value))
+async def get_graph(message: Message) -> None:
+    telegram_id = message.from_user.id
+    personal_data = get_profile_params_by_id(telegram_id)
+
+    logged_calories = personal_data.get('logged_calories')
+    logged_water = personal_data.get('logged_water')
+
+    plt.figure(figsize=(8, 5))
+    plt.plot(range(1, len(logged_water) + 1), logged_water, marker="o", linestyle="-", color="blue",
+             label="Вода в мл")
+    plt.xlabel("Приемы воды")
+    plt.ylabel("Вода в мл")
+    plt.title("Потребление воды")
+    plt.legend()
+    plt.savefig("water.png")
+    plt.close()
+    water_file = InputMediaPhoto(type='photo', media=FSInputFile("water.png"))
+
+    plt.figure(figsize=(8, 5))
+    plt.plot(range(1, len(logged_calories) + 1), logged_calories, marker="o", linestyle="-",
+             color="orange", label="Calories")
+    plt.xlabel("Приемы еды")
+    plt.ylabel("Калории")
+    plt.title("Потребление калорий")
+    plt.legend()
+    plt.savefig("calories.png")
+    plt.close()
+    calories_file = InputMediaPhoto(type='photo', media=FSInputFile("calories.png"))
+
+    await message.answer_media_group(media=[water_file, calories_file])

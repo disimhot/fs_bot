@@ -1,3 +1,3 @@
-from .middleware import FatSecretMiddleware
+from .middleware import LoggingMiddleware
 
-__all__ = ['FatSecretMiddleware']
+__all__ = ['LoggingMiddleware']
