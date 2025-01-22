@@ -2,11 +2,12 @@ import asyncio
 from aiogram import Bot, Dispatcher
 from aiogram import types
 from aiogram.client.default import DefaultBotProperties
+from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.enums import ParseMode
 from config import API_TOKEN
 from bot.handlers import get_routers
 from bot.helpers import BotCommands
-
+from bot.middlewares import LoggingMiddleware
 
 class BotApp:
     def __init__(self, token: str):
@@ -14,9 +15,9 @@ class BotApp:
         self.bot = Bot(token=token, default=DefaultBotProperties(
             parse_mode=ParseMode.HTML
         ))
-        self.dp = Dispatcher()
+        self.dp = Dispatcher(storage=MemoryStorage())
         self.dp.include_routers(*get_routers())
-
+        self.dp.update.outer_middleware(LoggingMiddleware())
     async def setup_bot_commands(self):
         bot_commands = [
             types.BotCommand(command=BotCommands.StartCommand.value,

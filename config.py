@@ -3,10 +3,11 @@ import os
 from dotenv import load_dotenv
 import logging
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 aiohttp_logger = logging.getLogger("aiohttp")
-aiohttp_logger.setLevel(logging.DEBUG)
+aiohttp_logger.setLevel(logging.INFO)
 
 load_dotenv()
 
