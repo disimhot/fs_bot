@@ -1,15 +1,26 @@
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup
+from bot.helpers.training import *
 
 
 def get_training_kb() -> InlineKeyboardMarkup:
-    keyboard = InlineKeyboardMarkup(row_width=2)
-    buttons = [
-        InlineKeyboardButton(text="Бег", callback_data="run"),
-        InlineKeyboardButton(text="Велосипед", callback_data="bike"),
-        InlineKeyboardButton(text="Силовая", callback_data="strength"),
-        InlineKeyboardButton(text="Плавание", callback_data="swim"),
-        InlineKeyboardButton(text="Кардио", callback_data="cardio"),
-        InlineKeyboardButton(text="Ходьба", callback_data="walking"),
-    ]
-    keyboard.add(*buttons)
+    kb = [
+        [
+            KeyboardButton(text=RUNNING),
+            KeyboardButton(text=CYCLING)
+        ], [
+            KeyboardButton(text=STRENGTH),
+            KeyboardButton(text=SWIMMING),
+        ],
+        [
+            KeyboardButton(text=CARDIO),
+            KeyboardButton(text=WALKING),
+        ]]
+
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=kb,
+        resize_keyboard=True,
+        one_time_keyboard=True,
+        input_field_placeholder="Выберите тренировку"
+    )
+
     return keyboard

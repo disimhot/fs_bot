@@ -2,6 +2,7 @@ from aiogram import Router, Bot
 from aiogram.types import Message, CallbackQuery
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
+from aiogram import F
 
 from bot.helpers import BotCommands
 from bot.states import ProfileSave, WaterLog, FoodLog, WorkoutLog
@@ -9,15 +10,19 @@ from bot.storage import add_profile_params, get_profile_params_by_id, update_pro
 from bot.helpers import Person, Food
 from bot.helpers.menu import change_main_menu
 from bot.keyboards.trainings import get_training_kb
+from bot.helpers.training import count_training_waste
+from bot.helpers.training import *
 
 router: Router = Router()
 food_searcher = Food()
+WORKOUTS = [RUNNING, CYCLING, STRENGTH, SWIMMING, CARDIO, WALKING]
 
 
 @router.callback_query(ProfileSave.confirmation)
 async def process_confirmation(callback_query: CallbackQuery, state: FSMContext, bot: Bot) -> None:
     status = callback_query.data
     if status == "confirm":
+        await change_main_menu(bot)
         await callback_query.answer("Подожите, бот рассчитывает норму калорий...")
         await state.update_data(status=status)
 
@@ -29,13 +34,15 @@ async def process_confirmation(callback_query: CallbackQuery, state: FSMContext,
         data['logged_water'] = [water_goal]
         data['water_goal'] = water_goal
         data['calorie_goal'] = calorie_goal
+        data['burned_calories'] = 0
+        data['drunken_water'] = 0
         add_profile_params(callback_query.from_user.id, data)
         await callback_query.message.reply(
             f"Ваша норма калорий: {calorie_goal} ккал\nВаша норма воды: {water_goal} мл")
-        await change_main_menu(bot)
         await state.clear()
     elif status == "cancel":
         print('NO')
+
 
 @router.message(Command(BotCommands.LogWater.value))
 async def log_water(message: Message, state: FSMContext) -> None:
@@ -51,11 +58,14 @@ async def process_water_amount(message: Message, state: FSMContext) -> None:
     person_data = get_profile_params_by_id(message.from_user.id)
     water_goal = person_data.get('water_goal')
     logged_water = person_data.get('logged_water')
+    drunken_water = person_data.get('drunken_water')
     water_goal -= water_amount
+    drunken_water += water_amount
     logged_water.append(water_goal)
     data = {
         'water_goal': water_goal,
-        'logged_water': logged_water
+        'logged_water': logged_water,
+        'drunken_water': drunken_water,
     }
 
     update_profile_params(message.from_user.id, data)
@@ -108,9 +118,75 @@ async def process_food_amount(message: Message, state: FSMContext) -> None:
 
 @router.message(Command(BotCommands.LogWorkout.value))
 async def log_workout(message: Message, state: FSMContext) -> None:
-    data = get_profile_params_by_id(message.from_user.id)
+    await state.set_state(WorkoutLog.workout)
     await message.answer(
-        "Пожалуйста, выберите тренировку ниже:",
+        "Пожалуйста, выберите тренировку ниже 🏃‍♂️:",
         reply_markup=get_training_kb()
     )
 
+
+@router.message(F.text.in_(WORKOUTS))
+async def process_training(message: Message, state: FSMContext) -> None:
+    workout = message.text
+    await state.update_data(workout=workout)
+    await message.reply("Cколько минут проходила тренировка?")
+    await state.set_state(WorkoutLog.minutes)
+
+
+@router.message(WorkoutLog.minutes)
+async def process_workout_duration(message: Message, state: FSMContext) -> None:
+    telegram_id = message.from_user.id
+    minutes = int(message.text)
+    await state.update_data(minutes=minutes)
+    state_data = await state.get_data()
+    workout = state_data.get('workout')
+    new_burned_cal, new_burned_water = count_training_waste(workout, minutes)
+    personal_data = get_profile_params_by_id(telegram_id)
+
+    logged_calories = personal_data.get('logged_calories')
+    calorie_goal = personal_data.get('calorie_goal')
+    water_goal = personal_data.get('water_goal')
+    logged_water = personal_data.get('logged_water')
+    burned_calories = personal_data.get('burned_calories')
+
+    new_calorie_goal = calorie_goal + burned_calories
+    new_water_goal = water_goal + new_burned_water
+    burned_calories += new_burned_cal
+    logged_calories.append(new_calorie_goal)
+    logged_water.append(new_water_goal)
+
+    data = {
+        'calorie_goal': new_calorie_goal,
+        'water_goal': new_water_goal,
+        'logged_calories': logged_calories,
+        'logged_water': logged_water,
+        'burned_calories': burned_calories,
+    }
+    update_profile_params(telegram_id, data)
+    await state.clear()
+    await message.answer(
+        f"🏃 {workout} {minutes} минут — {burned_calories} ккал.\nДополнительно: выпейте "
+        f"{new_burned_water} мл воды.")
+
+
+@router.message(Command(BotCommands.CheckProgress.value))
+async def log_training(message: Message) -> None:
+    telegram_id = message.from_user.id
+    personal_data = get_profile_params_by_id(telegram_id)
+
+    logged_calories = personal_data.get('logged_calories')
+    calorie_goal = personal_data.get('calorie_goal')
+    rest_calorie_goal = logged_calories[0] - calorie_goal
+    water_goal = personal_data.get('water_goal')
+    drunken_water = personal_data.get('drunken_water')
+
+    rest_water = water_goal - drunken_water
+    burned_calories = personal_data.get('burned_calories')
+
+    await message.answer(
+        f"📊 Прогресс:\nВода:\n- Выпито: {drunken_water} мл из {water_goal} мл.\n- Осталось: "
+        f"{rest_water} "
+        f"мл.\nКалории:\n- "
+        f"Потреблено: {rest_calorie_goal} ккал из {logged_calories[0]} ккал.\n- Сожжено: "
+        f"{burned_calories} ккал.\n- Осталось: {calorie_goal} ккал"
+    )

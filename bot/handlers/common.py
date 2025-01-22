@@ -1,7 +1,6 @@
 from aiogram import Router, Bot
 from aiogram.types import Message
 from aiogram.filters import CommandStart, Command
-from aiogram.fsm.context import FSMContext
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from bot.storage import is_profile_exist
@@ -12,7 +11,7 @@ router: Router = Router()
 
 
 @router.message(CommandStart())
-async def start_command(message: Message, _state: FSMContext, bot: Bot) -> None:
+async def start_command(message: Message, bot: Bot) -> None:
     telegram_id = message.from_user.id
     if is_profile_exist(telegram_id):
         await change_main_menu(bot)

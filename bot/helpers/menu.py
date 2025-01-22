@@ -20,4 +20,5 @@ async def change_main_menu(bot: Bot) -> None:
         types.BotCommand(command=BotCommands.HelpCommand.value,
                          description="Узнать о боте ❓"),
     ]
+    await bot.delete_my_commands()
     await bot.set_my_commands(bot_commands)
