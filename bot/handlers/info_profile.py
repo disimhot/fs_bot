@@ -206,9 +206,9 @@ async def get_graph(message: Message) -> None:
     plt.figure(figsize=(8, 5))
     plt.plot(range(1, len(logged_water) + 1), logged_water, marker="o", linestyle="-", color="blue",
              label="Вода в мл")
-    plt.xlabel("Приемы воды")
     plt.ylabel("Вода в мл")
     plt.title("Потребление воды")
+    plt.xticks([])
     plt.legend()
     plt.savefig("water.png")
     plt.close()
@@ -217,9 +217,9 @@ async def get_graph(message: Message) -> None:
     plt.figure(figsize=(8, 5))
     plt.plot(range(1, len(logged_calories) + 1), logged_calories, marker="o", linestyle="-",
              color="orange", label="Calories")
-    plt.xlabel("Приемы еды")
     plt.ylabel("Калории")
     plt.title("Потребление калорий")
+    plt.xticks([])
     plt.legend()
     plt.savefig("calories.png")
     plt.close()
