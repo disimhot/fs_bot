@@ -1,11 +1,10 @@
-import os
 from aiogram import Router, Bot
 from aiogram.types import Message, CallbackQuery, InputMediaPhoto, FSInputFile
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram import F
 import matplotlib.pyplot as plt
-from io import BytesIO
+from config import logger
 
 from bot.helpers import BotCommands
 from bot.states import ProfileSave, WaterLog, FoodLog, WorkoutLog
@@ -30,21 +29,27 @@ async def process_confirmation(callback_query: CallbackQuery, state: FSMContext,
         await state.update_data(status=status)
 
         data = await state.get_data()
-        person = Person(**data)
-        calorie_goal = person.count_daily_calorie_rate()
-        water_goal = await person.count_daily_water_rate()
-        data['logged_calories'] = [calorie_goal]
-        data['logged_water'] = [water_goal]
-        data['water_goal'] = water_goal
-        data['calorie_goal'] = calorie_goal
-        data['burned_calories'] = 0
-        data['drunken_water'] = 0
-        add_profile_params(callback_query.from_user.id, data)
-        await callback_query.message.reply(
-            f"Ваша норма калорий: {calorie_goal} ккал\nВаша норма воды: {water_goal} мл")
-        await state.clear()
+        try:
+            person = Person(**data)
+            calorie_goal = person.count_daily_calorie_rate()
+            water_goal = await person.count_daily_water_rate()
+            data['logged_calories'] = [calorie_goal]
+            data['logged_water'] = [water_goal]
+            data['water_goal'] = water_goal
+            data['calorie_goal'] = calorie_goal
+            data['burned_calories'] = 0
+            data['drunken_water'] = 0
+            add_profile_params(callback_query.from_user.id, data)
+            await callback_query.message.reply(
+                f"Ваша норма калорий 🍧 : {calorie_goal} ккал\nВаша норма воды 🚰: {water_goal} мл")
+            await state.clear()
+        except Exception as e:
+            logger.error(f"Error while processing confirmation: {str(e)}")
+            await callback_query.message.reply("Произошла ошибка при поиске города. Попробуйте снова /set_profile")
+            await state.clear()
     elif status == "cancel":
-        print('NO')
+        await state.clear()
+        await callback_query.message.reply("Подтверждение отменено.\n Для введения новых данных используйте /set_profile")
 
 
 @router.message(Command(BotCommands.LogWater.value))
@@ -95,28 +100,34 @@ async def process_food_name(message: Message, state: FSMContext) -> None:
 
 @router.message(FoodLog.amount)
 async def process_food_amount(message: Message, state: FSMContext) -> None:
-    food_amount = int(message.text)
-    await state.update_data(amount=food_amount)
-    state_data = await state.get_data()
-    await message.answer("Подожите, бот рассчитывает калории...")
-    person_data = get_profile_params_by_id(message.from_user.id)
-    calorie_goal = person_data.get('calorie_goal')
-    logged_calories = person_data.get('logged_calories')
-    nutritional_info = await food_searcher.fetch_fatsecret_data(**state_data)
-    calories, fat, carbs, protein = nutritional_info.values()
-    logged_cal = calories * food_amount // 100
-    new_calorie_goal = calorie_goal - logged_cal
-    logged_calories.append(new_calorie_goal)
-    data = {
-        'calorie_goal': new_calorie_goal,
-        'logged_calories': logged_calories
-    }
-    update_profile_params(message.from_user.id, data)
+    try:
+        food_amount = int(message.text)
+        await state.update_data(amount=food_amount)
+        state_data = await state.get_data()
+        await message.answer("Подожите, бот рассчитывает калории...")
+        person_data = get_profile_params_by_id(message.from_user.id)
+        calorie_goal = person_data.get('calorie_goal')
+        logged_calories = person_data.get('logged_calories')
+        nutritional_info = await food_searcher.fetch_fatsecret_data(**state_data)
+        calories, fat, carbs, protein = nutritional_info.values()
+        logged_cal = calories * food_amount // 100
+        new_calorie_goal = calorie_goal - logged_cal
+        logged_calories.append(new_calorie_goal)
+        data = {
+            'calorie_goal': new_calorie_goal,
+            'logged_calories': logged_calories
+        }
+        update_profile_params(message.from_user.id, data)
 
-    await state.clear()
-    await message.answer(
-        f"Потреблено: {logged_cal} ккал\nОсталось потребить: "
-        f"{new_calorie_goal if new_calorie_goal >= 0 else 0} ккал")
+        await state.clear()
+        await message.answer(
+            f"✅"
+            f"Потреблено: {logged_cal} ккал\nОсталось потребить: "
+            f"{new_calorie_goal if new_calorie_goal >= 0 else 0} ккал\n"
+            f"В продукте содержится белков {protein}, жиров {fat}, углеводов {carbs}.")
+    except Exception as e:
+        logger.error(e)
+        await message.answer(f"Продукт не найден. Попробуйте найти другой /log_food")
 
 
 @router.message(Command(BotCommands.LogWorkout.value))

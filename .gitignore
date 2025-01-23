@@ -6,7 +6,6 @@ __pycache__/
 *.xml
 *.py~
 *.txt~
-*.png
 
 # C extensions
 *.so

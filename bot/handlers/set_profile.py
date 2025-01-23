@@ -4,7 +4,7 @@ from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-from bot.helpers import BotCommands
+from bot.helpers import BotCommands, Person
 from bot.states import ProfileSave
 
 router: Router = Router()
@@ -45,8 +45,8 @@ async def process_activity(message: Message, state: FSMContext) -> None:
     activity = int(message.text)
     await state.update_data(activity=activity)
     kb = InlineKeyboardBuilder()
-    kb.button(text="Мужской", callback_data="male")
-    kb.button(text="Женский", callback_data="female")
+    kb.button(text=Person.MALE, callback_data=Person.MALE)
+    kb.button(text=Person.FEMALE, callback_data=Person.FEMALE)
     await message.reply("Выберите ваш пол:", reply_markup=kb.as_markup())
     await state.set_state(ProfileSave.gender)
 
@@ -65,9 +65,9 @@ async def process_city(message: Message, state: FSMContext) -> None:
     city = message.text
     await state.update_data(city=city)
     kb = InlineKeyboardBuilder()
-    kb.button(text="Похудение", callback_data="lose_weight")
-    kb.button(text="Удержание веса", callback_data="maintain_weight")
-    kb.button(text="Набор", callback_data="gain_weight")
+    kb.button(text=Person.LOSE_WEIGHT, callback_data=Person.LOSE_WEIGHT)
+    kb.button(text=Person.MAINTAIN_WEIGHT, callback_data=Person.MAINTAIN_WEIGHT)
+    kb.button(text=Person.GAIN_WEIGHT, callback_data=Person.GAIN_WEIGHT)
     await message.reply("Выберите вашу цель: ", reply_markup=kb.as_markup())
     await state.set_state(ProfileSave.diet)
 

@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import List, Optional, Dict
+from typing import List, Optional, ClassVar
 import aiohttp
 
 from config import WEATHER_TOKEN, WEATHER_API_URL
@@ -8,6 +8,11 @@ from bot.models.models import *
 
 
 class Person(BaseModel):
+    LOSE_WEIGHT: ClassVar[str] = "Похудение"
+    MAINTAIN_WEIGHT: ClassVar[str] = "Удержание веса"
+    GAIN_WEIGHT: ClassVar[str] = "Набор веса"
+    FEMALE: ClassVar[str] = "Женщина"
+    MALE: ClassVar[str] = "Мужчина"
     weight: int
     height: int
     age: int
@@ -33,13 +38,24 @@ class Person(BaseModel):
         else:
             return 1.9
 
+    def _get_calorie_coeff(self, goal):
+        if goal == Person.LOSE_WEIGHT:
+            return 0.9
+        elif goal == Person.MAINTAIN_WEIGHT:
+            return 1.0
+        elif goal == Person.GAIN_WEIGHT:
+            return 1.1
+        else:
+            raise ValueError('Goal is not valid')
+
     def count_daily_calorie_rate(self) -> int:
         tdee = self._get_tdee(self.activity)
-        if self.gender == 'male':
-            return int(tdee * (88.362 + (13.397 * self.weight) + (4.799 * self.height) - (
+        calorie_coeff = self._get_calorie_coeff(self.diet)
+        if self.gender == Person.FEMALE:
+            return int(calorie_coeff *tdee * (88.362 + (13.397 * self.weight) + (4.799 * self.height) - (
                     5.677 * self.age)))
-        elif self.gender == 'female':
-            return int(tdee * (447.593 + (9.247 * self.weight) + (3.098 * self.height) - (
+        elif self.gender == Person.MALE:
+            return int(calorie_coeff *tdee * (447.593 + (9.247 * self.weight) + (3.098 * self.height) - (
                     4.330 * self.age)))
         else:
             raise ValueError('Gender is not valid')
